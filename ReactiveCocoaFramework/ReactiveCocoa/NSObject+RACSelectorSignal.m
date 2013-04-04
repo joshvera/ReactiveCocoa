@@ -17,7 +17,6 @@ static const void *RACObjectSelectorSignals = &RACObjectSelectorSignals;
 @implementation NSObject (RACSelectorSignal)
 
 static RACSignal *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector) {
-	NSParameterAssert([NSStringFromSelector(selector) componentsSeparatedByString:@":"].count == 2);
 
 	@synchronized(self) {
 		NSMutableDictionary *selectorSignals = objc_getAssociatedObject(self, RACObjectSelectorSignals);
@@ -30,14 +29,44 @@ static RACSignal *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector) 
 		RACSubject *subject = selectorSignals[key];
 		if (subject != nil) return subject;
 
-		subject = [RACSubject subject];
+		subject = [RACReplaySubject replaySubjectWithCapacity:1];
+
+		Class originalClass = object_getClass(self);
+		Method originalMethod = class_getInstanceMethod(originalClass, selector);
+		SEL newSelector = NSSelectorFromString([NSString stringWithFormat:@"override_%@", NSStringFromSelector(selector)]);
+
 		IMP imp = imp_implementationWithBlock(^(id self, id arg) {
+			[self performSelector:newSelector];
 			[subject sendNext:arg];
 		});
 
-		BOOL success = class_addMethod(object_getClass(self), selector, imp, "v@:@");
-		NSAssert(success, @"%@ is already implemented on %@. %@ will not replace the existing implementation.", NSStringFromSelector(selector), self, NSStringFromSelector(_cmd));
-		if (!success) return nil;
+		NSString *originalClassName = NSStringFromClass(originalClass);
+		NSArray *components = [originalClassName componentsSeparatedByString:@"_"];
+		NSString *KVOName = components[0];
+		NSString *originalName = components[1];
+		NSString *name = [NSString stringWithFormat:@"%@_%@_RACSelectorSignal_%@", KVOName, NSStringFromSelector(selector), originalName];
+
+		Class original = NSClassFromString(originalName);
+		Class newClass = NSClassFromString(name);
+
+		if (newClass == nil)  {
+			newClass = objc_allocateClassPair(original, name.UTF8String, 0);
+
+			objc_registerClassPair(newClass);
+
+			BOOL success = class_addMethod(newClass, newSelector, imp, method_getTypeEncoding(originalMethod));
+			NSAssert(success, @"%@ is already implemented on %@. %@ will not replace the existing implementation.", NSStringFromSelector(selector), newClass, NSStringFromSelector(_cmd));
+			if (!success) return nil;
+
+			Method newMethod = class_getInstanceMethod(newClass, newSelector);
+			if (newMethod == nil) return nil;
+
+			method_exchangeImplementations(originalMethod, newMethod);
+		}
+
+		Class previousClass = class_setSuperclass(originalClass, newClass);
+		if (previousClass == nil) return nil;
+
 
 		selectorSignals[key] = subject;
 
