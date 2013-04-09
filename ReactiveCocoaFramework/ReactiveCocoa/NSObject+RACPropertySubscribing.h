@@ -55,12 +55,16 @@
 // deallocated.
 @property (atomic, readonly, strong) RACCompoundDisposable *rac_deallocDisposable;
 
-// Creates a signal for observing on the given object the key path of the source
-// object.
-+ (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer;
-
-// Creates a value from observing the value at the given keypath.
+// Creates a signal for observing the value at the given keypath.
 - (RACSignal *)rac_signalForKeyPath:(NSString *)keyPath observer:(NSObject *)observer;
+
+// Creates a signal for observing the value at the given keypath on the source
+// object.
+- (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer;
+
+// Creates a signal for observing the value at the given keypath on the source
+// object. The signal returns a change dictionary.
++ (RACSignal *)rac_signalWithChangesFor:(NSObject *)object keyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(NSObject *)observer;
 
 // Keeps the value of the KVC-compliant keypath up-to-date with the latest value
 // sent by the signal.

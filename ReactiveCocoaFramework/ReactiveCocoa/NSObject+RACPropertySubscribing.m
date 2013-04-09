@@ -14,6 +14,7 @@
 #import "EXTScope.h"
 #import "RACKVOTrampoline.h"
 #import "RACCompoundDisposable.h"
+#import "RACTuple.h"
 #import <objc/runtime.h>
 
 static const void *RACObjectCompoundDisposable = &RACObjectCompoundDisposable;
@@ -22,11 +23,20 @@ static const void *RACObjectScopedDisposable = &RACObjectScopedDisposable;
 @implementation NSObject (RACPropertySubscribing)
 
 + (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer {
+	return [[self
+		rac_signalWithChangesFor:object keyPath:keyPath options:NSKeyValueObservingOptionNew observer:observer]
+		map:^(id _) {
+			return _[NSKeyValueChangeNewKey];
+		}];
+}
+
++ (RACSignal *)rac_signalWithChangesFor:(NSObject *)object keyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(NSObject *)observer {
 	@unsafeify(observer, object);
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
+
 		@strongify(observer, object);
-		RACKVOTrampoline *KVOTrampoline = [object rac_addObserver:observer forKeyPath:keyPath options:0 block:^(id target, id observer, NSDictionary *change) {
-			[subscriber sendNext:[target valueForKeyPath:keyPath]];
+		RACKVOTrampoline *KVOTrampoline = [object rac_addObserver:observer forKeyPath:keyPath options:options block:^(id target, id observer, NSDictionary *change) {
+			[subscriber sendNext:change];
 		}];
 
 		RACDisposable *KVODisposable = [RACDisposable disposableWithBlock:^{
@@ -54,7 +64,11 @@ static const void *RACObjectScopedDisposable = &RACObjectScopedDisposable;
 }
 
 - (RACSignal *)rac_signalForKeyPath:(NSString *)keyPath observer:(NSObject *)observer {
-	return [self.class rac_signalFor:self keyPath:keyPath observer:observer];
+	return [self rac_signalFor:self keyPath:keyPath observer:observer];
+}
+
+- (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer {
+	return [self.class rac_signalFor:object keyPath:keyPath observer:observer];
 }
 
 - (RACDisposable *)rac_deriveProperty:(NSString *)keyPath from:(RACSignal *)signal {
