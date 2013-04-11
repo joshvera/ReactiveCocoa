@@ -22,15 +22,38 @@ static const void *RACObjectScopedDisposable = &RACObjectScopedDisposable;
 @implementation NSObject (RACPropertySubscribing)
 
 + (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer {
+	[self rac_signalForChange:object keyPath:keyPath options:NSKeyValueObservingOptionNew observer:observer];
+}
+
++ (RACSignal *)rac_signalWithChangeFor:(NSObject *)object keyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(NSObject *)observer {
 	@unsafeify(object, keyPath);
 	return [[self
-		rac_signalWithChangesFor:object keyPath:keyPath options:NSKeyValueObservingOptionNew observer:observer]
+		rac_signalWithChangesFor:object keyPath:keyPath options:options observer:observer]
 		map:^(NSDictionary *change) {
 			@strongify(object, keyPath);
 
 			NSKeyValueChange key = [change[NSKeyValueChangeKindKey] unsignedIntegerValue];
 
-			return (key == NSKeyValueChangeSetting ? change[NSKeyValueChangeNewKey] : [object valueForKeyPath:keyPath]);
+			if (key == NSKeyValueChangeSetting) {
+				return change[NSKeyValueObservingOptionNew];
+			} else {
+				if ([object isKindOfClass:NSOrderedSet.class] || [object isKindOfClass:NSArray.class]) {
+					return change[NSKeyValueChangeIndexesKey];
+				}
+
+				return [object valueForKeyPath:keyPath];
+			}
+
+			RACTuple *tuple = [[RACTuple alloc] init];
+			NSKeyValueObservingOptions new = options & NSKeyValueObservingOptionNew;
+
+			NSKeyValueObservingOptions old = options & NSKeyValueObservingOptionOld;
+
+			if (options & nskeyvalueChangeIn) {
+				[tuple addObject:change[NSKeyValueChangeNewKey]];
+			}
+
+			return (key == NSKeyValueChangeSetting ? change[NSKeyValueObservingOptionNew] : [object valueForKeyPath:keyPath]);
 		}];
 }
 

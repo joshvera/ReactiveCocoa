@@ -14,6 +14,20 @@
 
 SpecBegin(NSObjectRACPropertySubscribing)
 
+describe(@"RACAble", ^{
+	it(@"lol", ^{
+		RACTestObject *object = [[RACTestObject alloc] init];
+		__block id actual;
+		[RACAble(object, objectValue, NSKeyValueObservingOptionNew) subscribeNext:^(id _) {
+			actual = _;
+		}];
+
+		object.objectValue = @1;
+
+		expect(actual).to.beKindOf(NSDictionary.class);
+	});
+});
+
 describe(@"-rac_addDeallocDisposable:", ^{
 	it(@"should dispose of the disposable when it is dealloc'd", ^{
 		__block BOOL wasDisposed = NO;

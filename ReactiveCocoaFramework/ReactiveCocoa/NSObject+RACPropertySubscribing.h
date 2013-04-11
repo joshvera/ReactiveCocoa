@@ -33,10 +33,15 @@
 // Returns a signal which sends a value every time the value at the given key
 // path changes, and sends completed if self is deallocated (no matter which
 // variant of RACAble was used).
-#define RACAble(...) metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__))(_RACAbleObject(self, __VA_ARGS__))(_RACAbleObject(__VA_ARGS__))
+#define RACAble(...) metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__))(_RACAble(self, __VA_ARGS__))(_RACAble(__VA_ARGS__))
 
 // Do not use this directly. Use RACAble above.
+#define _RACAble(object, ...) metamacro_if_eq(1, metamacro_argcount(__VA_ARGS__))(_RACAbleObject(object, __VA_ARGS__))(_RACAbleChanges(object, __VA_ARGS__))
+
 #define _RACAbleObject(object, property) [object rac_signalForKeyPath:@keypath(object, property) observer:self]
+
+#define _RACAbleChange(object, property, opts) [object.class rac_signalWithChangesFor:object keyPath:@keypath(object, property) options:opts observer:self]
+
 
 // Same as RACAble, but the signal also starts with the current value of the
 // property.
@@ -58,6 +63,11 @@
 // Creates a signal to observe the value at the given keypath on the source
 // object.
 + (RACSignal *)rac_signalFor:(NSObject *)object keyPath:(NSString *)keyPath observer:(NSObject *)observer;
+
+// Creates a signal to observe the value at the given keypath on the source
+// object. Sends a change dictionary.
++ (RACSignal *)rac_signalWithChangeFor:(NSObject *)object keyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options observer:(NSObject *)observer;
+
 
 // Creates a signal to observe the value at the given keypath on the source
 // object. Sends a change dictionary.
