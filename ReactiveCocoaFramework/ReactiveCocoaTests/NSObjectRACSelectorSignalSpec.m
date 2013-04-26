@@ -1,5 +1,5 @@
 //
-//  NSObjectRACSelectorSignal.m
+//  NSObjectRACSelectorSignalSpec.m
 //  ReactiveCocoa
 //
 //  Created by Josh Abernathy on 3/18/13.
