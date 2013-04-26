@@ -27,22 +27,20 @@ static RACSignal *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector) 
 		}
 
 		NSString *key = NSStringFromSelector(selector);
-		RACSubject *subject = selectorSignals[key];
-		if (subject != nil) return subject;
+		RACTuple *subjectAndProxy = selectorSignals[key];
+		RACSubject *subject = subjectAndProxy.first;
+		if (subject) return subject;
 
 		subject = [RACSubject subject];
-		IMP imp = imp_implementationWithBlock(^(id self, id arg) {
-			[subject sendNext:arg];
-		});
+		subjectAndProxy.first = subject;
 
-		BOOL success = class_addMethod(object_getClass(self), selector, imp, "v@:@");
-		NSAssert(success, @"%@ is already implemented on %@. %@ will not replace the existing implementation.", NSStringFromSelector(selector), self, NSStringFromSelector(_cmd));
-		if (!success) return nil;
+		subjectAndProxy.second = [[RACLiftProxy alloc] initWithTarget:self selector:selector];
+		selectorSignals[key] = subjectAndProxy;
 
-		selectorSignals[key] = subject;
 
 		[self rac_addDeallocDisposable:[RACDisposable disposableWithBlock:^{
 			[subject sendCompleted];
+			selectorSignals[key] = nil;
 		}]];
 
 		return subject;
