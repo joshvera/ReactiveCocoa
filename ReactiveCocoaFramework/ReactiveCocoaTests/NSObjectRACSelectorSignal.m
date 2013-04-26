@@ -8,6 +8,7 @@
 
 #import "RACTestObject.h"
 #import "RACSubclassObject.h"
+#import "RACTuple.h"
 #import "NSObject+RACSelectorSignal.h"
 #import "RACSignal.h"
 
@@ -23,7 +24,19 @@ describe(@"with an instance method", ^{
 
 		[object lifeIsGood:@42];
 
-		expect(value).to.equal(@42);
+		expect(value).to.equal(RACTuplePack(@42));
+	});
+
+	it(@"should send arguments as a tuple", ^{
+		RACSubclassObject *object = [[RACSubclassObject alloc] init];
+		__block id value;
+		[[object rac_signalForSelector:@selector(lifeIsGood:)] subscribeNext:^(id x) {
+			value = x;
+		}];
+
+		[object lifeIsGood:@42];
+
+		expect(value).to.beKindOf(RACTuple.class);
 	});
 
 	it(@"shouldn't swizzle an existing method", ^{
