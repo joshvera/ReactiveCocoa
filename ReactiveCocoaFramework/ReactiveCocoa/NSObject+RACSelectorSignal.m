@@ -37,18 +37,6 @@ static NSMethodSignature *RACMethodSignatureForSelector(id self, SEL _cmd, SEL s
     return signature;
 }
 
-// A proxy object that intercepts messages to its target and sends the
-// invocation arguments to its target's subscribers.
-//
-// Messages sent to an RACSelectorProxy object will be lifted according to the same
-// rules as -rac_liftSelector:withObjects:, with the exception that messages
-// returning a non-object type are not possible.
-@interface RACSelectorProxy : NSProxy
-
-- (id)initWithTarget:(NSObject *)target selector:(SEL)selector;
-
-@end
-
 
 @implementation NSObject (RACSelectorSignal)
 
@@ -145,54 +133,4 @@ static RACSubject *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector)
 	return NSObjectRACSignalForSelector(self, _cmd, selector);
 }
 
-@end
-
-@implementation RACSelectorProxy {
-	NSObject *_target;
-	SEL _selector;
-}
-
-- (id)initWithTarget:(id)target selector:(SEL)selector {
-	_target = target;
-	_selector = selector;
-	return self;
-}
-
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-	return [_target methodSignatureForSelector:aSelector] ?: [super methodSignatureForSelector:aSelector];
-}
-
-- (void)forwardInvocation:(NSInvocation *)anInvocation {
-	NSMethodSignature *signature = anInvocation.methodSignature;
-	NSUInteger argumentsCount = signature.numberOfArguments - 2;
-
-	NSMutableArray *arguments = [NSMutableArray arrayWithCapacity:argumentsCount];
-
-	// First two arguments are self and selector.
-	for (NSUInteger i = 2; i < signature.numberOfArguments; i++) {
-		id argument = [anInvocation rac_argumentAtIndex:i];
-		[arguments addObject:argument ?: RACTupleNil.tupleNil];
-	}
-
-	[anInvocation invoke];
-	
-	NSMutableDictionary *selectorSignals = objc_getAssociatedObject(self, RACObjectSelectorSignals);
-	NSString *selectorString = NSStringFromSelector(_selector);
-	RACSubject *selectorSignal = [selectorSignals[selectorString] first];
-	if (selectorSignal)
-	[selectorSignal sendNext:[arguments copy]];
-
-	const char *returnType = signature.methodReturnType;
-	if (signature.methodReturnLength > 0) {
-		if (strcmp(returnType, "@") != 0 || strcmp(returnType, "#") != 0) {
-			NSAssert(NO, @"-rac_signalForSelector: may only subscribe to methods which return void or object types; %@ returns %s", NSStringFromSelector(anInvocation.selector), returnType);
-		}
-	}
-}
-
-// Choices here are dynamically subclass the object, add the requested method if it doesn't exist yet, set the object's class to the class
-// Caveats: I dont think this works if the class has already been observed. It breaks those observations?
-
-// Set the object's class to RACSelectorProxy, forward messages to original object. Probably works.
-// Caveats: Probably slow.
 @end
