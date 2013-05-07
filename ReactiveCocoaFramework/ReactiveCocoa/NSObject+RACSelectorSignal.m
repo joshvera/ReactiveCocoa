@@ -16,7 +16,7 @@
 
 static const void *RACObjectSelectorSignals = &RACObjectSelectorSignals;
 
-static void dynamicForwardInvocation(id self, SEL _cmd, NSInvocation *invocation) {
+static void RACForwardInvocation(id self, SEL _cmd, NSInvocation *invocation) {
     Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
     id proxy = object_getIvar(self, var);
 
@@ -24,13 +24,13 @@ static void dynamicForwardInvocation(id self, SEL _cmd, NSInvocation *invocation
     [invocation invoke];
 }
 
-static BOOL dynamicRespondsToSelector(id self, SEL _cmd, SEL selector) {
+static BOOL RACRespondsToSelector(id self, SEL _cmd, SEL selector) {
     Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
     id proxy = object_getIvar(self, var);
     return [proxy respondsToSelector:selector];
 }
 
-static NSMethodSignature *dynamicMethodSignatureForSelector(id self, SEL _cmd, SEL selector) {
+static NSMethodSignature *RACMethodSignatureForSelector(id self, SEL _cmd, SEL selector) {
     Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
     id proxy = object_getIvar(self, var);
     NSMethodSignature* signature = [proxy methodSignatureForSelector:selector];
@@ -91,15 +91,15 @@ static RACSubject *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector)
 			objc_registerClassPair(subclass);
 
 			Method method = class_getInstanceMethod([NSObject class], @selector(forwardInvocation:));
-			method = class_addMethod(subclass, @selector(forwardInvocation:), (IMP)dynamicForwardInvocation, method_getTypeEncoding(m));
+			success = class_addMethod(subclass, @selector(forwardInvocation:), (IMP)RACForwardInvocation, method_getTypeEncoding(method));
 			if (!success) return nil;
 
 			method = class_getInstanceMethod([NSObject class], @selector(respondsToSelector:));
-			ok = class_addMethod(subclass, @selector(respondsToSelector:), (IMP)dynamicRespondsToSelector, method_getTypeEncoding(m));
+			success = class_addMethod(subclass, @selector(respondsToSelector:), (IMP)RACRespondsToSelector, method_getTypeEncoding(method));
 			if (!success) return nil;
 
 			method = class_getInstanceMethod([NSObject class], @selector(methodSignatureForSelector:));
-			ok = class_addMethod(subclass, @selector(methodSignatureForSelector:), (IMP)dynamicMethodSignatureForSelector, method_getTypeEncoding(m));
+			success = class_addMethod(subclass, @selector(methodSignatureForSelector:), (IMP)RACMethodSignatureForSelector, method_getTypeEncoding(method));
 			if (!success) return nil;
 		}
 
