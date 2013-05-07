@@ -62,7 +62,7 @@
 		880B9177150B09190008488E /* RACSubject.m in Sources */ = {isa = PBXBuildFile; fileRef = 880B9175150B09190008488E /* RACSubject.m */; };
 		880D7A5A16F7B351004A3361 /* NSObject+RACSelectorSignal.h in Headers */ = {isa = PBXBuildFile; fileRef = 880D7A5816F7B351004A3361 /* NSObject+RACSelectorSignal.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		880D7A5B16F7B351004A3361 /* NSObject+RACSelectorSignal.h in Headers */ = {isa = PBXBuildFile; fileRef = 880D7A5816F7B351004A3361 /* NSObject+RACSelectorSignal.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		880D7A5C16F7B351004A3361 /* NSObject+RACSelectorSignal.m in Sources */ = {isa = PBXBuildFile; fileRef = 880D7A5916F7B351004A3361 /* NSObject+RACSelectorSignal.m */; };
+		880D7A5C16F7B351004A3361 /* NSObject+RACSelectorSignal.m in Sources */ = {isa = PBXBuildFile; fileRef = 880D7A5916F7B351004A3361 /* NSObject+RACSelectorSignal.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		880D7A5D16F7B351004A3361 /* NSObject+RACSelectorSignal.m in Sources */ = {isa = PBXBuildFile; fileRef = 880D7A5916F7B351004A3361 /* NSObject+RACSelectorSignal.m */; };
 		880D7A6616F7BB1A004A3361 /* NSObjectRACSelectorSignalSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 880D7A6516F7BB1A004A3361 /* NSObjectRACSelectorSignalSpec.m */; };
 		880D7A6916F7BCC7004A3361 /* RACSubclassObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 880D7A6816F7BCC7004A3361 /* RACSubclassObject.m */; };

@@ -67,7 +67,7 @@ describe(@"with a class method", ^{
 
 		[RACSubclassObject lifeIsGood:@42];
 
-		expect(value).to.equal(@42);
+		expect(value).to.equal(RACTuplePack(@42));
 	});
 
 	it(@"shouldn't swizzle an existing method", ^{

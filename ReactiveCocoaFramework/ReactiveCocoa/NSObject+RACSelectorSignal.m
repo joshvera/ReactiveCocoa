@@ -16,6 +16,26 @@
 
 static const void *RACObjectSelectorSignals = &RACObjectSelectorSignals;
 
+static void dynamicForwardInvocation(id self, SEL _cmd, NSInvocation *invocation) {
+    Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
+    id proxy = object_getIvar(self, var);
+
+    invocation.target = proxy;
+    [invocation invoke];
+}
+
+static BOOL dynamicRespondsToSelector(id self, SEL _cmd, SEL selector) {
+    Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
+    id proxy = object_getIvar(self, var);
+    return [proxy respondsToSelector:selector];
+}
+
+static NSMethodSignature *dynamicMethodSignatureForSelector(id self, SEL _cmd, SEL selector) {
+    Ivar var = class_getInstanceVariable(object_getClass(self), "_rac_originalObject");
+    id proxy = object_getIvar(self, var);
+    NSMethodSignature* signature = [proxy methodSignatureForSelector:selector];
+    return signature;
+}
 
 // A proxy object that intercepts messages to its target and sends the
 // invocation arguments to its target's subscribers.
@@ -49,6 +69,40 @@ static RACSubject *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector)
 		subject = [RACSubject subject];
 
 		Method method = class_getInstanceMethod([self class], selector);
+
+		const char * prefix = "RACSelectorSignal_";
+		Class originalClass = [self class];
+
+		// Traverse all classes and return early if we've already swizzled the custom subclass.
+		// If its already the class, return it
+		NSString *className = NSStringFromClass(originalClass);
+		if (strncmp(prefix, [className UTF8String], strlen(prefix)) == 0)
+			return subject;
+
+		NSString *subclassName = [NSString stringWithFormat:@"%s%@", prefix, className];
+		Class subclass = NSClassFromString(subclassName);
+
+		// Dynamically create a subclass of self
+		if (subclass == nil) {
+			subclass = objc_allocateClassPair(originalClass, [subclassName UTF8String], 0);
+
+			BOOL success = class_addIvar(subclass, "_rac_originalObject", sizeof(id), (uint8_t)log2(sizeof(id)), @encode(id));
+			
+			objc_registerClassPair(subclass);
+
+			Method method = class_getInstanceMethod([NSObject class], @selector(forwardInvocation:));
+			method = class_addMethod(subclass, @selector(forwardInvocation:), (IMP)dynamicForwardInvocation, method_getTypeEncoding(m));
+			if (!success) return nil;
+
+			method = class_getInstanceMethod([NSObject class], @selector(respondsToSelector:));
+			ok = class_addMethod(subclass, @selector(respondsToSelector:), (IMP)dynamicRespondsToSelector, method_getTypeEncoding(m));
+			if (!success) return nil;
+
+			method = class_getInstanceMethod([NSObject class], @selector(methodSignatureForSelector:));
+			ok = class_addMethod(subclass, @selector(methodSignatureForSelector:), (IMP)dynamicMethodSignatureForSelector, method_getTypeEncoding(m));
+			if (!success) return nil;
+		}
+
 		IMP imp = imp_implementationWithBlock(^(id self, ...) {
 			va_list args;
 			va_start(args, self);
@@ -63,26 +117,6 @@ static RACSubject *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector)
 
 			[subject sendNext:[RACTuple tupleWithObjectsFromArray:objects]];
 		});
-
-
-		const char * prefix = "RACSelectorSignal_";
-		Class originalClass = [self class];
-
-
-		// Traverse all classes a return early if we've already swizzled the custom subclass.
-		NSString *className = NSStringFromClass(originalClass);
-		if (strncmp(prefix, [className UTF8String], strlen(prefix)) == 0) return subject;
-
-		NSString * subclassName = [NSString stringWithFormat:@"%s%@", prefix, className];
-		Class subclass = NSClassFromString(subclassName);
-
-		// Dynamically create a subclass of self
-		if (subclass == nil) {
-			subclass = objc_allocateClassPair(originalClass, [subclassName UTF8String], 0);
-
-			objc_registerClassPair(subclass);
-		}
-
 
 		if (subclass != nil) {
 			// Add block as the custom instance method.
