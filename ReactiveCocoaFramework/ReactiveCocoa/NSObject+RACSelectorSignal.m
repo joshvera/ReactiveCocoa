@@ -34,42 +34,53 @@ static RACSignal *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector) 
 
 		subject = selectorSignals[selectorName] = [RACSubject subject];
 
+		BOOL isClass = class_isMetaClass(object_getClass(self));
 		Class class = object_getClass(self);
-		SEL reservedSelector = NSSelectorFromString([@"rac_forward_" stringByAppendingString:selectorName]);
+		NSString *selectorPrefix = isClass ? @"rac_forward_class_" : @"rac_forward_";
+		SEL reservedSelector = NSSelectorFromString([selectorPrefix stringByAppendingString:selectorName]);
 		if ([class instancesRespondToSelector:reservedSelector] && class_getMethodImplementation(class, selector) == _objc_msgForward) {
 			return subject;
 		}
 
-		Method method = class_getInstanceMethod(class, selector);
+		NSString *subclassName = [NSString stringWithFormat:@"%@%@%@",NSStringFromSelector(reservedSelector), @"_", NSStringFromClass(class)];
+		Class subclass = NSClassFromString(subclassName);
+		if (subclass == nil) {
+			subclass = objc_allocateClassPair(class, [subclassName UTF8String], 0);
+			objc_registerClassPair(subclass);
+
+			IMP imp = imp_implementationWithBlock(^(id self, NSInvocation *invocation) {
+				NSMutableDictionary *selectorSignals = objc_getAssociatedObject(self, RACObjectSelectorSignals);
+				if (selectorSignals != nil) {
+					RACSubject *subject = selectorSignals[selectorName];
+					if (subject != nil) {
+						RACTuple *argumentsTuple = [RACTuple tupleWithObjectsFromArray:invocation.rac_allArguments];
+						[subject sendNext:argumentsTuple];
+					}
+				}
+
+				// ???: Consider methods that return non-void.
+				if ([invocation.target respondsToSelector:reservedSelector]) {
+					invocation.selector = reservedSelector;
+					[invocation invoke];
+				}
+			});
+
+			class_replaceMethod(subclass, @selector(forwardInvocation:), imp, "v@:@");
+		}
+
+		Method (*getMethod)(Class class, SEL sel) = isClass ? class_getClassMethod : class_getInstanceMethod;
+		Method method = getMethod(subclass, selector);
 		if (method != NULL) {
 			// Alias the existing method to reservedSelector.
-			class_addMethod(class, reservedSelector, method_getImplementation(method), method_getTypeEncoding(method));
+			class_addMethod(subclass, reservedSelector, method_getImplementation(method), method_getTypeEncoding(method));
 			// Redefine the selector to call -forwardInvocation:
 			method_setImplementation(method, _objc_msgForward);
 		} else {
 			// Define the selector to call -forwardInvocation:
-			class_addMethod(class, selector, _objc_msgForward, "v@:@");
+			class_addMethod(subclass, selector, _objc_msgForward, "v@:@");
 		}
 
-		IMP imp = imp_implementationWithBlock(^(id self, NSInvocation *invocation) {
-			NSMutableDictionary *selectorSignals = objc_getAssociatedObject(self, RACObjectSelectorSignals);
-			if (selectorSignals != nil) {
-				RACSubject *subject = selectorSignals[selectorName];
-				if (subject != nil) {
-					RACTuple *argumentsTuple = [RACTuple tupleWithObjectsFromArray:invocation.rac_allArguments];
-					[subject sendNext:argumentsTuple];
-				}
-			}
-
-			// ???: Consider methods that return non-void.
-			if ([invocation.target respondsToSelector:reservedSelector]) {
-				invocation.selector = reservedSelector;
-				[invocation invoke];
-			}
-		});
-
-		// TODO: Handle case where -forwardInvocation: exists.
-		class_replaceMethod(class, @selector(forwardInvocation:), imp, "v@:@");
+		object_setClass(self, subclass);
 
 		[self rac_addDeallocDisposable:[RACDisposable disposableWithBlock:^{
 			[subject sendCompleted];
