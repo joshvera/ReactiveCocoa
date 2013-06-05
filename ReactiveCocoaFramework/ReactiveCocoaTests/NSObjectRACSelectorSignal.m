@@ -62,7 +62,7 @@ describe(@"with an instance method", ^{
 		expect(value2).to.equal(@"foo");
 	});
 
-	it(@"should create method where non-existant", ^{
+	it(@"should create method where non-existent", ^{
 		RACSubclassObject *object = [[RACSubclassObject alloc] init];
 		__block id value;
 		[[object rac_signalForSelector:@selector(setDelegate:)] subscribeNext:^(RACTuple *x) {
@@ -85,6 +85,17 @@ describe(@"with a class method", ^{
 		[RACSubclassObject lifeIsGood:@42];
 
 		expect(value).to.equal(@42);
+	});
+
+	it(@"should create method where non-existent", ^{
+		__block id value;
+		[[RACSubclassObject rac_signalForSelector:@selector(setDelegate:)] subscribeNext:^(RACTuple *x) {
+			value = x.first;
+		}];
+
+		[RACSubclassObject performSelector:@selector(setDelegate:) withObject:@[ @YES ]];
+
+		expect(value).to.equal(@[ @YES ]);
 	});
 });
 
