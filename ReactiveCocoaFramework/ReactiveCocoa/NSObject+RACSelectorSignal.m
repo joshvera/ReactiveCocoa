@@ -42,7 +42,7 @@ static RACSignal *NSObjectRACSignalForSelector(id self, SEL _cmd, SEL selector) 
 			return subject;
 		}
 
-		NSString *subclassName = [NSString stringWithFormat:@"%@%@%@",NSStringFromSelector(reservedSelector), @"_", NSStringFromClass(class)];
+		NSString *subclassName = [NSString stringWithFormat:@"%@%@%@",NSStringFromSelector(reservedSelector), @"_", NSStringFromClass([self class])];
 		Class subclass = NSClassFromString(subclassName);
 		if (subclass == nil) {
 			subclass = objc_allocateClassPair(class, [subclassName UTF8String], 0);

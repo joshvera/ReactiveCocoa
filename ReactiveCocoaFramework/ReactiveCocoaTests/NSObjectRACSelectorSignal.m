@@ -8,11 +8,20 @@
 
 #import "RACTestObject.h"
 #import "RACSubclassObject.h"
+#import "NSObject+RACPropertySubscribing.h"
 #import "NSObject+RACSelectorSignal.h"
 #import "RACSignal.h"
 #import "RACTuple.h"
 
 SpecBegin(NSObjectRACSelectorSignal)
+// Stop observing
+// Swizzle Class
+// Start observing
+// Caveats: only works on our own observations
+
+// Swizzle class
+// Swizzle removeObserver:keyPath:context:
+// Swizzle class back and call super if not RACKVOTrampoline context
 
 describe(@"with an instance method", ^{
 	it(@"should send the argument for each invocation", ^{
@@ -43,6 +52,23 @@ describe(@"with an instance method", ^{
 		
 		expect(value).to.equal(@42);
 		expect(value2).to.equal(@42);
+	});
+
+	it(@"should send the arguments to each subscription on a KVO observed object", ^{
+		RACSubclassObject *object = [[RACSubclassObject alloc] init];
+		__block id value;
+
+		[RACAbleWithStart(object, objectValue) subscribeNext:^(id _) {
+
+		}];
+
+		[[object rac_signalForSelector:@selector(lifeIsGood:)] subscribeNext:^(RACTuple *x) {
+			value = x.first;
+		}];
+
+		[object lifeIsGood:@42];
+		
+		expect(value).to.equal(@42);
 	});
 
 	it(@"should send the arguments for each invocation to the associated signal", ^{
