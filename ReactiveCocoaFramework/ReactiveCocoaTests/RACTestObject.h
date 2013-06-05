@@ -33,6 +33,8 @@
 - (NSString *)combineObjectValue:(id)objectValue andIntegerValue:(NSInteger)integerValue;
 - (NSString *)combineObjectValue:(id)objectValue andSecondObjectValue:(id)secondObjectValue;
 
++ (NSString *)combineObjectValue:(id)objectValue andSecondObjectValue:(id)secondObjectValue;
+
 - (void)lifeIsGood:(id)sender;
 
 + (void)lifeIsGood:(id)sender;

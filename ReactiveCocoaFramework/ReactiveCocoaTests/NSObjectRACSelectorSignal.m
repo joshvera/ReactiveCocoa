@@ -87,6 +87,38 @@ describe(@"with a class method", ^{
 		expect(value).to.equal(@42);
 	});
 
+	it(@"should send the argument for each invocation to the associated signal", ^{
+		__block id value1;
+		[[RACTestObject rac_signalForSelector:@selector(lifeIsGood:)] subscribeNext:^(RACTuple *x) {
+			value1 = x.first;
+		}];
+
+		__block id value2;
+		[[RACSubclassObject rac_signalForSelector:@selector(lifeIsGood:)] subscribeNext:^(RACTuple *x) {
+			value2 = x.first;
+		}];
+
+		[RACTestObject lifeIsGood:@42];
+		[RACSubclassObject lifeIsGood:@"Carpe diem"];
+
+		expect(value1).to.equal(@42);
+		expect(value2).to.equal(@"Carpe diem");
+	});
+
+	it(@"should send all arguments for each invocation", ^{
+		__block id value1;
+		__block id value2;
+		[[RACSubclassObject rac_signalForSelector:@selector(combineObjectValue:andSecondObjectValue:)] subscribeNext:^(RACTuple *x) {
+			value1 = x.first;
+			value2 = x.second;
+		}];
+
+		[RACSubclassObject combineObjectValue:@42 andSecondObjectValue:@"foo"];
+
+		expect(value1).to.equal(@42);
+		expect(value2).to.equal(@"foo");
+	});
+
 	it(@"should create method where non-existent", ^{
 		__block id value;
 		[[RACSubclassObject rac_signalForSelector:@selector(setDelegate:)] subscribeNext:^(RACTuple *x) {

@@ -34,6 +34,10 @@
 	return [NSString stringWithFormat:@"%@: %@", objectValue, secondObjectValue];
 }
 
++ (NSString *)combineObjectValue:(id)objectValue andSecondObjectValue:(id)secondObjectValue {
+	return nil;
+}
+
 - (void)lifeIsGood:(id)sender {
 	
 }
