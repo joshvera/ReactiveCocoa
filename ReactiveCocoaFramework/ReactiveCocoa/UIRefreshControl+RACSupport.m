@@ -15,6 +15,7 @@
 #import "RACCompoundDisposable.h"
 #import "RACSignal.h"
 #import "RACSignal+Operations.h"
+#import "RACScheduler.h"
 #import "UIControl+RACSupport.h"
 #import <objc/runtime.h>
 
@@ -47,7 +48,7 @@ static void *UIRefreshControlActionDisposableKey = &UIRefreshControlActionDispos
 				signalWithValue:control]
 				catchTo:[RACSignal empty]]
 				ignoreValues]
-				concat:[RACSignal return:control]];
+				concat:[[RACSignal return:control] deliverOn:RACScheduler.currentScheduler]];
 		}]
 		concat]
 		subscribeNext:^(UIRefreshControl *control) {
